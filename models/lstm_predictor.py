@@ -8,7 +8,8 @@ from sklearn.preprocessing import MinMaxScaler
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 
-from models.lstm_model import LSTMModel  # relative import
+from lstm_model import LSTMModel  # relative import
+
 
 # Configuration
 DATA_PKL   = os.path.normpath(os.path.join(os.path.dirname(__file__), '../data/traffic_model_ready.pkl'))
@@ -22,6 +23,8 @@ def _ensure_dir(path):
 class LSTMPredictor:
     def __init__(self, data_pkl=DATA_PKL, models_dir=MODELS_DIR):
         # Load full traffic DataFrame
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Using device: {self.device}")
         self.df = pd.read_pickle(data_pkl)
         self.df['Timestamp'] = pd.to_datetime(self.df['Timestamp'])
         # Ensure Site_ID is str for consistency
@@ -71,7 +74,7 @@ class LSTMPredictor:
             loader = DataLoader(ds, batch_size=batch_size, shuffle=True)
 
             # Initialize model
-            model = LSTMModel(input_size=1, hidden_size=64, num_layers=2)
+            model = LSTMModel(input_size=1, hidden_size=64, num_layers=2).to(self.device)
             optimizer = torch.optim.Adam(model.parameters(), lr=lr)
             loss_fn = torch.nn.MSELoss()
 
@@ -80,6 +83,8 @@ class LSTMPredictor:
             for epoch in range(epochs):
                 total_loss = 0.0
                 for xb, yb in loader:
+                    xb = xb.to(self.device)
+                    yb = yb.to(self.device)
                     pred = model(xb)
                     loss = loss_fn(pred, yb)
                     optimizer.zero_grad()
@@ -87,7 +92,7 @@ class LSTMPredictor:
                     optimizer.step()
                     total_loss += loss.item()
                 avg = total_loss / len(loader)
-                print(f"[{site}|{loc}] Epoch {epoch+1}/{epochs}  loss: {avg:.4f}")
+                print(f"[{site}|{loc}] Epoch {epoch+1}/{epochs} ‒ loss: {avg:.4f}")
 
             # Save model state and scaler
             torch.save({
@@ -105,8 +110,8 @@ class LSTMPredictor:
         if not os.path.exists(path):
             raise FileNotFoundError(f"No saved model for {site}|{loc}")
 
-        ckpt = torch.load(path, weights_only=False)
-        model = LSTMModel(input_size=1, hidden_size=64, num_layers=2)
+        ckpt = torch.load(path)
+        model = LSTMModel(input_size=1, hidden_size=64, num_layers=2).to(self.device)
         model.load_state_dict(ckpt['state_dict'])
         model.eval()
         scaler = ckpt['scaler']
@@ -125,7 +130,7 @@ class LSTMPredictor:
         seq = sub['Volume'].values.astype(np.float32).reshape(-1,1)
         seq_scaled = scaler.transform(seq)                     # (window,1)
         x = torch.from_numpy(seq_scaled).unsqueeze(0)          # (1,window,1)
-
+        x = x.to(self.device)
         with torch.no_grad():
             pred_scaled = model(x).item()
         pred = scaler.inverse_transform([[pred_scaled]])[0][0]
