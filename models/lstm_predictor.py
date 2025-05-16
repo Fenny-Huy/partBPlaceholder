@@ -8,7 +8,7 @@ from sklearn.preprocessing import MinMaxScaler
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 
-from lstm_model import LSTMModel  # relative import
+from models.lstm_model import LSTMModel  # relative import
 
 # Configuration
 DATA_PKL   = os.path.normpath(os.path.join(os.path.dirname(__file__), '../data/traffic_model_ready.pkl'))
@@ -105,7 +105,7 @@ class LSTMPredictor:
         if not os.path.exists(path):
             raise FileNotFoundError(f"No saved model for {site}|{loc}")
 
-        ckpt = torch.load(path)
+        ckpt = torch.load(path, weights_only=False)
         model = LSTMModel(input_size=1, hidden_size=64, num_layers=2)
         model.load_state_dict(ckpt['state_dict'])
         model.eval()
