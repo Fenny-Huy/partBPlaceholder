@@ -87,7 +87,7 @@ class LSTMPredictor:
                     optimizer.step()
                     total_loss += loss.item()
                 avg = total_loss / len(loader)
-                print(f"[{site}|{loc}] Epoch {epoch+1}/{epochs} ‒ loss: {avg:.4f}")
+                print(f"[{site}|{loc}] Epoch {epoch+1}/{epochs}  loss: {avg:.4f}")
 
             # Save model state and scaler
             torch.save({
