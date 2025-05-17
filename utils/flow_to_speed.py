@@ -21,10 +21,13 @@ def flow_to_speed(flow):
     if not candidates:
         return 0
 
-    speed = max(candidates)
+    higher_speed = max(candidates)
+    lower_speed = min(candidates)
 
     # Cap speed at 60 km/h for low traffic
     if flow <= 351:
-        speed = min(speed, 60)
+        speed = min(higher_speed, 60)
+    else:
+        speed = max(lower_speed, 1)
 
     return speed
