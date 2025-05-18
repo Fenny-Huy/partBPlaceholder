@@ -15,6 +15,7 @@ from models.lstm_model import LSTMModel  # relative import
 # Configuration
 DATA_PKL   = os.path.normpath(os.path.join(os.path.dirname(__file__), '../data/traffic_model_ready.pkl'))
 MODELS_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), 'saved_models'))
+MODELS_DIR_2 = os.path.normpath(os.path.join(os.path.dirname(__file__), '../saved_models'))
 INPUT_DAYS = 7     # history window in days
 SEQ_LEN    = 96    # 96 intervals per day (15-min each)
 
@@ -24,7 +25,7 @@ def _ensure_dir(path):
     os.makedirs(path, exist_ok=True)
 
 class LSTMPredictor:
-    def __init__(self, data_pkl=DATA_PKL, models_dir=MODELS_DIR):
+    def __init__(self, data_pkl=DATA_PKL, models_dir=MODELS_DIR, models_dir_2=MODELS_DIR_2):
         # Load full traffic DataFrame
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {self.device}")
@@ -35,6 +36,8 @@ class LSTMPredictor:
         # Prepare output directory
         _ensure_dir(models_dir)
         self.models_dir = models_dir
+        _ensure_dir(models_dir_2)
+        self.models_dir_2 = models_dir_2
 
     def train_all(self, epochs=5, batch_size=32, lr=1e-3):
         """
@@ -49,8 +52,8 @@ class LSTMPredictor:
                 continue  # skip already-trained
 
             # Extract the sorted volume series
-            if site == 3001 and loc.upper() == 'CHURCH_ST SW OF BARKERS_RD':
-                window = 2 * SEQ_LEN  # 2 days of 15-min intervals
+            if site == '3001' and loc.upper() == 'CHURCH_ST SW OF BARKERS_RD':
+                window = 2 * SEQ_LEN - 2  # 2 days of 15-min intervals
             else:
                 window = INPUT_DAYS * SEQ_LEN  # default 7 days
 
@@ -116,7 +119,7 @@ class LSTMPredictor:
         """
         loc = loc.upper()
         key = f"{site}__{loc.replace(' ','_')}.pth"
-        path = os.path.join(self.models_dir, key)
+        path = os.path.join(self.models_dir_2, key)
         if not os.path.exists(path):
             raise FileNotFoundError(f"No saved model for {site}|{loc}")
 
@@ -127,6 +130,10 @@ class LSTMPredictor:
         scaler = ckpt['scaler']
 
         # Build history window ending just before `timestamp`
+        if site == '3001' and loc == 'CHURCH_ST SW OF BARKERS_RD':
+            window = 2 * SEQ_LEN - 2
+        else:
+            window = INPUT_DAYS * SEQ_LEN
         
         ts = pd.to_datetime(timestamp)
         self.df['Location'] = self.df['Location'].str.upper()
@@ -134,12 +141,12 @@ class LSTMPredictor:
             (self.df['Site_ID']==site) &
             (self.df['Location']==loc) &
             (self.df['Timestamp'] < ts)
-        ].sort_values('Timestamp').tail(INPUT_DAYS*SEQ_LEN)
+        ].sort_values('Timestamp').tail(window)
         
         
         
 
-        if len(sub) < INPUT_DAYS*SEQ_LEN:
+        if len(sub) < window:
             raise ValueError(f"Not enough history for {site}|{loc} at {timestamp} with only {len(sub)} points")
 
         seq = sub['Volume'].values.astype(np.float32).reshape(-1,1)
