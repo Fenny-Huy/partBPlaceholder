@@ -34,7 +34,7 @@ def astar(start, goal, centroids, edges, get_volume_at_edge, predictor, timestam
             print(f"Best arm: {loc}")
             flow  = predictor.predict(A, loc, timestamp)
             speed_kmh = flow_to_speed(flow)
-            travel_time = dist_km / speed_kmh * 60  # minutes
+            travel_time = dist_km / speed_kmh * 60 + 1/2  # minutes
             print(f"speed_kmh: {speed_kmh:.2f} km/h, travel_time: {travel_time:.2f} min, volume: {flow:.2f} veh/h, loc: {loc}")
 
             new_cost = cost_so_far[current] + travel_time

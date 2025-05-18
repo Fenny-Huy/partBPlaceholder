@@ -49,8 +49,14 @@ class LSTMPredictor:
                 continue  # skip already-trained
 
             # Extract the sorted volume series
+            if site == 3001 and loc.upper() == 'CHURCH_ST SW OF BARKERS_RD':
+                window = 2 * SEQ_LEN  # 2 days of 15-min intervals
+            else:
+                window = INPUT_DAYS * SEQ_LEN  # default 7 days
+
+
             ts = sub.sort_values('Timestamp')['Volume'].values
-            window = INPUT_DAYS * SEQ_LEN
+            
             if len(ts) < window + 1:
                 print(f"⚠ Skipping {site}|{loc}: only {len(ts)} points")
                 continue
