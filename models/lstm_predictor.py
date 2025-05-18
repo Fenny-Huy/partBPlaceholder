@@ -123,7 +123,7 @@ class LSTMPredictor:
         if not os.path.exists(path):
             raise FileNotFoundError(f"No saved model for {site}|{loc}")
 
-        ckpt = torch.load(path, weights_only = False)
+        ckpt = torch.load(path, weights_only = False, map_location=self.device)
         model = LSTMModel(input_size=1, hidden_size=64, num_layers=2).to(self.device)
         model.load_state_dict(ckpt['state_dict'])
         model.eval()
