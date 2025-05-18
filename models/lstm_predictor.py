@@ -7,6 +7,7 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import torch
 from torch.utils.data import TensorDataset, DataLoader
+import re
 
 from models.lstm_model import LSTMModel  # relative import
 
@@ -16,6 +17,8 @@ DATA_PKL   = os.path.normpath(os.path.join(os.path.dirname(__file__), '../data/t
 MODELS_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), 'saved_models'))
 INPUT_DAYS = 7     # history window in days
 SEQ_LEN    = 96    # 96 intervals per day (15-min each)
+
+
 
 def _ensure_dir(path):
     os.makedirs(path, exist_ok=True)
@@ -105,6 +108,7 @@ class LSTMPredictor:
         """
         Predicts traffic volume (vehicles/hour) for a given site & arm at a specific timestamp.
         """
+        loc = loc.upper()
         key = f"{site}__{loc.replace(' ','_')}.pth"
         path = os.path.join(self.models_dir, key)
         if not os.path.exists(path):
@@ -117,12 +121,16 @@ class LSTMPredictor:
         scaler = ckpt['scaler']
 
         # Build history window ending just before `timestamp`
+        
         ts = pd.to_datetime(timestamp)
+        self.df['Location'] = self.df['Location'].str.upper()
         sub = self.df[
             (self.df['Site_ID']==site) &
             (self.df['Location']==loc) &
             (self.df['Timestamp'] < ts)
         ].sort_values('Timestamp').tail(INPUT_DAYS*SEQ_LEN)
+        
+        
         
 
         if len(sub) < INPUT_DAYS*SEQ_LEN:
