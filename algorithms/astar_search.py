@@ -6,7 +6,10 @@ from utils.flow_to_speed import flow_to_speed
 from utils.edge_mapper import EdgeMapper
 
 
-mapper = EdgeMapper("data/traffic_model_ready.pkl")
+mapper = EdgeMapper(
+  arms_pkl="data/traffic_model_ready.pkl",
+  nodes_csv="data/scats_complete.csv"
+)
 
 
 def astar(start, goal, centroids, edges, get_volume_at_edge, predictor, timestamp):
@@ -26,11 +29,13 @@ def astar(start, goal, centroids, edges, get_volume_at_edge, predictor, timestam
             break
 
         for (A, B, dist_km) in [e for e in edges if e[0] == current]:
+            print(f"Exploring edge {A}→{B} ({dist_km:.2f} km)")
             loc = mapper.best_arm(A, B, centroids)
+            print(f"Best arm: {loc}")
             flow  = predictor.predict(A, loc, timestamp)
             speed_kmh = flow_to_speed(flow)
             travel_time = dist_km / speed_kmh * 60  # minutes
-            print(f"speed_kmh: {speed_kmh:.2f} km/h, travel_time: {travel_time:.2f} min, dist_km: {dist_km:.2f} km, volume: {flow:.2f} veh/h, loc: {loc}, A: {A}, B: {B}")
+            print(f"speed_kmh: {speed_kmh:.2f} km/h, travel_time: {travel_time:.2f} min, volume: {flow:.2f} veh/h, loc: {loc}")
 
             new_cost = cost_so_far[current] + travel_time
             if B not in cost_so_far or new_cost < cost_so_far[B]:

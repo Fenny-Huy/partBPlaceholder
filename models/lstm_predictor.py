@@ -123,9 +123,10 @@ class LSTMPredictor:
             (self.df['Location']==loc) &
             (self.df['Timestamp'] < ts)
         ].sort_values('Timestamp').tail(INPUT_DAYS*SEQ_LEN)
+        
 
         if len(sub) < INPUT_DAYS*SEQ_LEN:
-            raise ValueError(f"Not enough history for {site}|{loc} at {timestamp}")
+            raise ValueError(f"Not enough history for {site}|{loc} at {timestamp} with only {len(sub)} points")
 
         seq = sub['Volume'].values.astype(np.float32).reshape(-1,1)
         seq_scaled = scaler.transform(seq)                     # (window,1)
