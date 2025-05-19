@@ -6,7 +6,7 @@ from algorithms.graph_builder import build_graph
 from algorithms.astar_search   import astar
 from utils.edge_mapper         import EdgeMapper
 from models.predictor          import LSTMPredictor
-from models.predictor          import GruPredictor 
+from models.predictor          import GRUPredictor 
 from utils.flow_to_speed       import flow_to_speed
 
 
@@ -32,11 +32,11 @@ def main():
     # 2) Instantiate mapper & predictor
     print("🗺️  Initializing edge→arm mapper & LSTM predictor …")
     mapper    = EdgeMapper(args.volumes)
-    if args.model == 'LSTM':
+    if args.model.upper() == 'LSTM':
         predictor = LSTMPredictor(data_pkl=args.volumes,
                                   models_dir="lstm_saved_models")
-    elif args.model == 'GRU':
-        predictor = GruPredictor(data_pkl=args.volumes,
+    elif args.model.upper() == 'GRU':
+        predictor = GRUPredictor(data_pkl=args.volumes,
                                  models_dir="gru_saved_models")
 
 

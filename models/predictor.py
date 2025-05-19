@@ -179,76 +179,76 @@ class GRUPredictor:
         _ensure_dir(self.models_dir_2)
     
     def train_all(self, epochs=5, batch_size=32, lr=1e-3):
-    """
-    Train & save one GRU model per (Site_ID, Location) arm.
-    """
-    grouped = self.df.groupby(['Site_ID', 'Location'])
-    for (site, loc), sub in grouped:
-        # Filename: e.g. "0970__WARRIGAL_RD_N_of_HIGH_STREET_RD_GRU.pth"
-        fname = f"{site}__{loc.replace(' ', '_')}_GRU.pth"
-        out_path = os.path.join(self.models_dir, fname)
-        if os.path.exists(out_path):
-            continue  # Skip already-trained
+        """
+        Train & save one GRU model per (Site_ID, Location) arm.
+        """
+        grouped = self.df.groupby(['Site_ID', 'Location'])
+        for (site, loc), sub in grouped:
+            # Filename: e.g. "0970__WARRIGAL_RD_N_of_HIGH_STREET_RD_GRU.pth"
+            fname = f"{site}__{loc.replace(' ', '_')}_GRU.pth"
+            out_path = os.path.join(self.models_dir, fname)
+            if os.path.exists(out_path):
+                continue  # Skip already-trained
 
-        # Extract the sorted volume series
-        if site == '3001' and loc.upper() == 'CHURCH_ST SW OF BARKERS_RD':
-            window = 2 * SEQ_LEN - 2  # Special case
-        else:
-            window = INPUT_DAYS * SEQ_LEN  # Default 7 days
+            # Extract the sorted volume series
+            if site == '3001' and loc.upper() == 'CHURCH_ST SW OF BARKERS_RD':
+                window = 2 * SEQ_LEN - 2  # Special case
+            else:
+                window = INPUT_DAYS * SEQ_LEN  # Default 7 days
 
-        ts = sub.sort_values('Timestamp')['Volume'].values
+            ts = sub.sort_values('Timestamp')['Volume'].values
 
-        if len(ts) < window + 1:
-            print(f"⚠ Skipping {site}|{loc}: only {len(ts)} points")
-            continue
+            if len(ts) < window + 1:
+                print(f"⚠ Skipping {site}|{loc}: only {len(ts)} points")
+                continue
 
-        # Create sliding windows
-        X_list, y_list = [], []
-        for i in range(window, len(ts)):
-            X_list.append(ts[i - window:i])
-            y_list.append(ts[i])
-        X_arr = np.stack(X_list, axis=0).astype(np.float32)       # (N, window)
-        y_arr = np.array(y_list, dtype=np.float32).reshape(-1, 1) # (N, 1)
+            # Create sliding windows
+            X_list, y_list = [], []
+            for i in range(window, len(ts)):
+                X_list.append(ts[i - window:i])
+                y_list.append(ts[i])
+            X_arr = np.stack(X_list, axis=0).astype(np.float32)       # (N, window)
+            y_arr = np.array(y_list, dtype=np.float32).reshape(-1, 1) # (N, 1)
 
-        # Normalize using MinMaxScaler
-        scaler = MinMaxScaler()
-        X_flat = X_arr.reshape(-1, 1)
-        X_scaled = scaler.fit_transform(X_flat).reshape(-1, window)
-        y_scaled = scaler.transform(y_arr)
+            # Normalize using MinMaxScaler
+            scaler = MinMaxScaler()
+            X_flat = X_arr.reshape(-1, 1)
+            X_scaled = scaler.fit_transform(X_flat).reshape(-1, window)
+            y_scaled = scaler.transform(y_arr)
 
-        # Convert to tensors: (batch, seq_len, input_size)
-        X_tensor = torch.from_numpy(X_scaled).unsqueeze(-1)  # (N, window, 1)
-        y_tensor = torch.from_numpy(y_scaled)                # (N, 1)
+            # Convert to tensors: (batch, seq_len, input_size)
+            X_tensor = torch.from_numpy(X_scaled).unsqueeze(-1)  # (N, window, 1)
+            y_tensor = torch.from_numpy(y_scaled)                # (N, 1)
 
-        dataset = TensorDataset(X_tensor, y_tensor)
-        loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+            dataset = TensorDataset(X_tensor, y_tensor)
+            loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-        # Build and train GRU model
-        model = GRUModel(input_size=1, hidden_size=64, num_layers=2).to(self.device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-        loss_fn = torch.nn.MSELoss()
+            # Build and train GRU model
+            model = GRUModel(input_size=1, hidden_size=64, num_layers=2).to(self.device)
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+            loss_fn = torch.nn.MSELoss()
 
-        model.train()
-        for epoch in range(epochs):
-            total_loss = 0.0
-            for xb, yb in loader:
-                xb = xb.to(self.device)
-                yb = yb.to(self.device)
-                pred = model(xb)
-                loss = loss_fn(pred, yb)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                total_loss += loss.item()
-            avg_loss = total_loss / len(loader)
-            print(f"[GRU {site}|{loc}] Epoch {epoch+1}/{epochs} ‒ Loss: {avg_loss:.4f}")
+            model.train()
+            for epoch in range(epochs):
+                total_loss = 0.0
+                for xb, yb in loader:
+                    xb = xb.to(self.device)
+                    yb = yb.to(self.device)
+                    pred = model(xb)
+                    loss = loss_fn(pred, yb)
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+                    total_loss += loss.item()
+                avg_loss = total_loss / len(loader)
+                print(f"[GRU {site}|{loc}] Epoch {epoch+1}/{epochs} ‒ Loss: {avg_loss:.4f}")
 
-        # Save model and scaler
-        torch.save({
-            'state_dict': model.state_dict(),
-            'scaler': scaler
-        }, out_path)
-        print(f"✔ GRU model saved: {fname}")
+            # Save model and scaler
+            torch.save({
+                'state_dict': model.state_dict(),
+                'scaler': scaler
+            }, out_path)
+            print(f"✔ GRU model saved: {fname}")
 
     def predict(self, site, loc, timestamp):
         loc = loc.upper()
@@ -258,7 +258,7 @@ class GRUPredictor:
         if not os.path.exists(path):
             raise FileNotFoundError(f"No saved GRU model for {site}|{loc}")
 
-        ckpt = torch.load(path, map_location=self.device)
+        ckpt = torch.load(path, map_location=self.device, weights_only=False)
         model = GRUModel(input_size=1, hidden_size=64, num_layers=2).to(self.device)
         model.load_state_dict(ckpt['state_dict'])
         model.eval()
