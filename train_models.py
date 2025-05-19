@@ -1,7 +1,14 @@
-from models.lstm_predictor import LSTMPredictor
+from models.predictor import LSTMPredictor
+from models.predictor import GruPredictor
 
-predictor = LSTMPredictor(
+LSTMTrainer = LSTMPredictor(
     data_pkl="data/traffic_model_ready.pkl",
-    models_dir="saved_models"
+    models_dir="lstm_saved_models"
 )
-predictor.train_all()
+LSTMTrainer.train_all()
+
+GRUTrainer = GruPredictor(
+    data_pkl="data/traffic_model_ready.pkl",
+    models_dir="gru_saved_models"
+)
+GRUTrainer.train_all()

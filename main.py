@@ -5,7 +5,8 @@ import argparse
 from algorithms.graph_builder import build_graph
 from algorithms.astar_search   import astar
 from utils.edge_mapper         import EdgeMapper
-from models.lstm_predictor     import LSTMPredictor
+from models.predictor          import LSTMPredictor
+from models.predictor          import GruPredictor 
 from utils.flow_to_speed       import flow_to_speed
 
 
@@ -17,12 +18,11 @@ def main():
     p.add_argument('--target',    required=True, help='Destination site ID (e.g. 3685)')
     p.add_argument('--timestamp', required=True,
                    help='Timestamp for prediction (YYYY-MM-DD HH:MM:SS)')
+    p.add_argument('--model', required=True, help = 'Model to use (LSTM or GRU)')
     p.add_argument('--nodes',     default='data/scats_complete_average.csv',
                    help='Path to node centroids CSV')
     p.add_argument('--volumes',   default='data/traffic_model_ready.pkl',
                    help='Path to volume pickle')
-    p.add_argument('--models',    default='models/saved_models',
-                   help='Directory of trained LSTM arm models')
     args = p.parse_args()
 
     # 1) Build graph
@@ -32,8 +32,13 @@ def main():
     # 2) Instantiate mapper & predictor
     print("🗺️  Initializing edge→arm mapper & LSTM predictor …")
     mapper    = EdgeMapper(args.volumes)
-    predictor = LSTMPredictor(data_pkl=args.volumes,
-                              models_dir=args.models)
+    if args.model == 'LSTM':
+        predictor = LSTMPredictor(data_pkl=args.volumes,
+                                  models_dir="lstm_saved_models")
+    elif args.model == 'GRU':
+        predictor = GruPredictor(data_pkl=args.volumes,
+                                 models_dir="gru_saved_models")
+
 
 
     # 4) Run A* to get the fastest route under predicted traffic
