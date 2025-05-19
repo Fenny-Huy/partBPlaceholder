@@ -12,7 +12,7 @@ mapper = EdgeMapper(
 )
 
 
-def astar(start, goal, centroids, edges, get_volume_at_edge, predictor, timestamp):
+def astar(start, goal, centroids, edges, predictor, timestamp):
     """
     A* search using predicted volume to estimate travel time.
 

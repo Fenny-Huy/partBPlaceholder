@@ -35,15 +35,10 @@ def main():
     predictor = LSTMPredictor(data_pkl=args.volumes,
                               models_dir=args.models)
 
-    # 3) Define the volume→time function for edges
-    def get_volume_at_edge(A, B):
-        loc   = mapper.best_arm(A, B, centroids)
-        flow  = predictor.predict(A, loc, args.timestamp)
-        return flow
 
     # 4) Run A* to get the fastest route under predicted traffic
     print(f"🚦 Running A* from {args.source} → {args.target} at {args.timestamp} …")
-    path, total_time = astar(args.source, args.target,centroids, edges, get_volume_at_edge, predictor, args.timestamp)
+    path, total_time = astar(args.source, args.target,centroids, edges, predictor, args.timestamp)
 
     if not path:
         print("❌ No route found.")
